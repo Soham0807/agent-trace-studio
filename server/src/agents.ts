@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { ApiError, GoogleGenAI } from "@google/genai";
 import type { AgentRole } from "./types.js";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -22,28 +22,41 @@ Judge whether it adequately and correctly completes the step.
 Your response MUST start with exactly one word, either "APPROVED" or "REVISE", followed by a newline and then a short (1-3 sentence) justification. If REVISE, the justification must be actionable feedback for the Coder.`,
 };
 
+const MAX_RETRIES = 3;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function callAgent(
   role: AgentRole,
   userContent: string,
   onToken: (chunk: string) => void,
 ): Promise<string> {
-  let full = "";
-  const stream = await ai.models.generateContentStream({
-    model: MODEL,
-    contents: userContent,
-    config: {
-      systemInstruction: SYSTEM_PROMPTS[role],
-      maxOutputTokens: 700,
-    },
-  });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      let full = "";
+      const stream = await ai.models.generateContentStream({
+        model: MODEL,
+        contents: userContent,
+        config: {
+          systemInstruction: SYSTEM_PROMPTS[role],
+          maxOutputTokens: 700,
+        },
+      });
 
-  for await (const chunk of stream) {
-    const text = chunk.text ?? "";
-    if (text) {
-      full += text;
-      onToken(text);
+      for await (const chunk of stream) {
+        const text = chunk.text ?? "";
+        if (text) {
+          full += text;
+          onToken(text);
+        }
+      }
+
+      return full;
+    } catch (err) {
+      const isRateLimited = err instanceof ApiError && err.status === 429;
+      if (!isRateLimited || attempt === MAX_RETRIES) throw err;
+      // Free-tier requests-per-minute cap: back off and retry rather than failing the whole run.
+      await sleep(2 ** attempt * 5000);
     }
   }
-
-  return full;
+  throw new Error("unreachable");
 }
