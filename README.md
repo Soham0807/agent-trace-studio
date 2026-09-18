@@ -19,7 +19,8 @@ effectively a flight recorder for an AI agent team.
 
 ## Run it
 
-You need an Anthropic API key: https://console.anthropic.com/settings/keys
+You need a free Gemini API key: https://aistudio.google.com/apikey (no card
+required, generous free daily quota).
 
 ```bash
 # from the repo root
@@ -28,7 +29,7 @@ npm --prefix server install     # already done if you followed setup
 npm --prefix client install     # already done if you followed setup
 
 # put your real key in server/.env
-#   ANTHROPIC_API_KEY=sk-ant-...
+#   GEMINI_API_KEY=...
 
 npm run dev
 ```
@@ -51,7 +52,7 @@ client/  React + TS (Vite)
   Timeline.tsx          Swimlane feed of planner/coder/critic messages
 
 server/  Express + ws + TS
-  agents.ts            System prompts per role + Anthropic streaming call
+  agents.ts            System prompts per role + Gemini streaming call
   orchestrator.ts       The actual agent loop (see below)
   index.ts              HTTP trigger (POST /api/runs) + WebSocket broadcast
 ```

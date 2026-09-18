@@ -1,11 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import type { AgentRole } from "./types.js";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 const SYSTEM_PROMPTS: Record<AgentRole, string> = {
   planner: `You are the Planner agent in a multi-agent software team.
@@ -30,18 +28,22 @@ export async function callAgent(
   onToken: (chunk: string) => void,
 ): Promise<string> {
   let full = "";
-  const stream = anthropic.messages.stream({
+  const stream = await ai.models.generateContentStream({
     model: MODEL,
-    max_tokens: 700,
-    system: SYSTEM_PROMPTS[role],
-    messages: [{ role: "user", content: userContent }],
+    contents: userContent,
+    config: {
+      systemInstruction: SYSTEM_PROMPTS[role],
+      maxOutputTokens: 700,
+    },
   });
 
-  stream.on("text", (chunk) => {
-    full += chunk;
-    onToken(chunk);
-  });
+  for await (const chunk of stream) {
+    const text = chunk.text ?? "";
+    if (text) {
+      full += text;
+      onToken(text);
+    }
+  }
 
-  await stream.finalMessage();
   return full;
 }

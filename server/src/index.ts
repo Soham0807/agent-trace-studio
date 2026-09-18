@@ -28,7 +28,7 @@ function broadcast(event: TraceEvent) {
 }
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, hasApiKey: Boolean(process.env.ANTHROPIC_API_KEY) });
+  res.json({ ok: true, hasApiKey: Boolean(process.env.GEMINI_API_KEY) });
 });
 
 app.post("/api/runs", async (req, res) => {
